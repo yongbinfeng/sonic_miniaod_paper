@@ -1,0 +1,69 @@
+\newlength\cmsTabSkip\setlength{\cmsTabSkip}{1ex}
+\providecommand{\NA}{\ensuremath{\text{---}}}
+\providecommand{\DOI}[1]{\href{http://dx.doi.org/#1}{\doi{#1}}}
+\newcommand{\TENSORFLOW} {{\textsc{TensorFlow}}\xspace}
+\newcommand{\PYTORCHGEOMETRIC} {{\textsc{PyTorch-Geometric}}\xspace}
+\newcommand{\PYTORCH} {{\textsc{PyTorch}}\xspace}
+\newcommand{\ONNX} {{\textsc{ONNX}}\xspace}
+\newcommand{\ONNXRUNTIME} {{\textsc{ONNX Runtime}}\xspace}
+\newcommand{\XGBOOST} {{\textsc{XGBoost}}\xspace}
+%\usepackage{enumitem}
+
+
+\cmsNoteHeader{ML-23-YYY}
+
+\title{Portable Acceleration of CMS Mini-AOD Production with Coprocessors as a Service}
+
+\address[cern]{CERN}
+\author[cern]{The CMS Collaboration}
+
+\date{\today}
+
+\abstract{Computing demands for large scientific experiments, such as the CMS experiment at CERN, will increase dramatically in the next decades. To complement the future performance increases of software running on CPUs, explorations of coprocessor usage in data processing hold great potential and interest. We explore the novel approach of Services for Optimized Network Inference on Coprocessors (SONIC), and study the deployment of this as-a-service approach in large-scale data processing. In this setup, the main CMS Mini-AOD data processing workflow is executed on CPUs, while several machine learning (ML) inference tasks are offloaded onto (remote) coprocessors, such as GPUs. With experiments performed at Google Cloud, the Purdue Tier-2 computing center, and combinations of the two, we demonstrate the acceleration of these ML algorithms individually on coprocessors and the corresponding throughput improvement for the entire workflow. We also present that this approach can be easily generalized to different types of coprocessors, and even deployed on local CPUs without performance decrease. We emphasize that SONIC enables high coprocessor usage and brings the portability to run workflows on different types of coprocessors.
+}
+
+\hypersetup{%
+pdfauthor={SONIC Team},%
+pdftitle={Portable Acceleration of CMS Mini-AOD Production with Coprocessors as a Service},%
+pdfsubject={CMS},%
+pdfkeywords={CMS, Computing, Machine Learning}}
+
+\maketitle
+
+\section{Introduction}
+\label{sec:intro}
+\input{sections/01_introduction}
+
+\section{Related Work}
+\label{sec:pastwork}
+\input{sections/02_pastwork}
+
+\section{SONIC}
+\label{sec:sonic}
+\input{sections/03_sonic}
+
+
+\section{Algorithms and Deployments}
+\label{sec:algo}
+\input{sections/04_algo}
+
+
+\section{Performance}
+\label{sec:performances}
+\input{sections/05_performances}
+
+\section{Portability}
+\label{sec:IPUs}
+\input{sections/06_portable}
+
+\section{Summary}
+\label{sec:summary}
+\input{sections/07_summary}
+
+
+\clearpage
+% Correct ones will be incerted later
+\begin{acknowledgments}
+\end{acknowledgments}
+
+\bibliography{ML-23-YYY}
