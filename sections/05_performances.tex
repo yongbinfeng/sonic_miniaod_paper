@@ -1,23 +1,12 @@
 %Document the test results we did at ailab, Purdue, and Google Cloud.
 
-\subsection{Computing resources}
-
-Fermilab, via the LHC Physics Center (LPC), provides CPU-only batch resources and a set of interactive machines with NVIDIA Tesla T4 GPUs. Through Fermilab, we were also able to steer the allocation of cloud resources (see below) using the HepCloud~\cite{Holzman:2017jgg} framework. These resources are physically located in Illinois.
-%need to be more specific?
-
-The Google Cloud Platform (GCP) provides CPU-only virtual machines (VMs) and VMs enabled with NVIDIA Tesla T4 GPUs. By default, the CPUs are a mix of Skylake, Broadwell, Haswell, Sandy Bridge, and Ivy Bridge architectures. In GCP, we created customized machines with specified numbers of CPU threads or different ratios of CPU threads to number of GPUs. Similarly, a customized, dynamic SLURM~\cite{slurm} cluster was created that could instantiate and deplete 4-thread VMs on demand for medium-scale tests that ran jobs across $\mathcal{O}(1000)$ CPUs. The cluster's 4-thread configuration was chosen so that 4-threaded CMSSW jobs would saturate the node's resources, improving reproducibility of timing tests. CPU-only VMs could also be instantiated through HepCloud. In GCP, we also maintained GPU-enabled VMs running Triton servers that both the SLURM and HepCloud client nodes could access. These resources are physically located in Iowa.
-
-At the Purdue CMS Tier-2 computing cluster, tests were performed with reserved CPU-only and GPU-enabled machines. The CPU-only machines are 20-core Intel E5-2660 v3 machines, and the GPU-enabled machines each have two AMD EPYC-7702 CPUs with a NVIDIA Tesla T4 GPU. Reserving these nodes allowed for controlled resource utilization, leading to more reproducible timing tests. These resources are physically located in Indiana.
-
-It is important to note that having a diversity of locations for these resources allows for a clear demonstration of one of SONIC's key features, namely that it enables the use of non-local resources. We were able to start a server in one location and have client jobs running at another site. One such study will be presented in Section~\ref{sec:different_sites}.
-
 \subsection{Latency Optimization}
 \label{sec:algo_acceleration}
 %Document the comparisons of CPU and GPU throughuts and latency of these different algorithms, maybe also with different backends, e.g., Tensorflow, ONNX, TensorRT, Pytorch, etc.
 
 %We measure the throughputs and latency of the ParticleNet algorithm on one NVIDIA Tesla T4 GPU, with different inference backends supported in Triton: ONNX, Pytorch, and also Pytorch with TensorRT optimizations. The results are shown in Fig.~\ref{fig:throughputs_pn}.
 
-To maximize the resource efficiency and throughput benefits of SONIC, it is necessary to start with some single-model characterization studies. For example, in order to maximize GPU usage without oversaturation, we need to find the optimal ratio of client-side CPUs to GPU, find the best batch size for inference in the Triton server, and choose the model implementation that will give the best throughput.
+To maximize the resource efficiency and throughput benefits of SONIC, it is necessary to start with some single-model characterization studies out of \CMSSW. For example, in order to maximize GPU usage without oversaturation, we need to find the optimal ratio of client-side CPUs to GPU, find the best batch size for inference in the Triton server, and choose the model implementation that will give the best throughput.
 
 The latter two aspects mentioned above can be explored with the Triton Model Analyzer tool~\cite{triton_model_analyzer}. This tool feeds certain inputs in the correct tensor format to a loaded model hosted on a server, allowing for robust characterization of latency per inference or exploration of the impact of batch size.
 As an example, we measure the latency and throughput of the ParticleNet (PN) algorithm for AK4 jet tagging on one NVIDIA Tesla T4 GPU, with different inference backends supported in Triton: \ONNX, \ONNX with TRT, and \PYTORCH~\cite{pytorch}. %Was this done at Purdue?

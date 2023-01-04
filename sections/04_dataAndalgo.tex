@@ -2,8 +2,10 @@
 
 %\textcolor{red}{Include IO sizes for these models. maybe also add them into Table~\ref{table:SONIC_Algos}}.
 
-As mentioned in Section~\ref{sec:implementation}, one of the steps of CMS data processing is the creation of Mini-AOD files. These are designed to be relatively small and accessible, providing the high-level physics information needed for most analyses. They are derived from the AOD data format, reducing the size per event by a factor of 10.
-Mini-AOD processing involves a wide variety of algorithms that propagate, skim, and reanalyze the AOD input objects. Figure~\ref{fig:algorithms} shows that the per-event latency is about 993\unit{ms} when processing simulated LHC Run 2  (proton-proton collisions at a center-of-mass energy of 13 TeV) \ttbar events on a 20-core Intel Haswell machine, when it is running five synchronized four-threaded jobs.
+This section describes in detail the physics dataset, the ML algorithms ported to SONIC for inferences, and the computing resources used in the studies.
+
+\subsection{Dataset}
+Figure~\ref{fig:algorithms} shows that the per-event latency is about 993\unit{ms} when processing simulated LHC Run 2 (proton-proton collisions at a center-of-mass energy of 13 TeV) \ttbar events on a 20-core Intel Haswell machine, when it is running five synchronized four-threaded jobs.
 
 \begin{figure}[htp]
     \centering
@@ -36,12 +38,9 @@ In Mini-AOD processing, inference is performed separately for each jet in a give
 
 
 \subsubsection{DeepMET}
-
-
 The missing transverse momentum vector \ptvecmiss is typically computed as the negative vector sum of the transverse momenta of all the particles in an event, and its magnitude is denoted as \ptmiss~\cite{CMS:2019ctu}. DeepMET (DM)~\cite{DeepMET} is a \TENSORFLOW-based~\cite{tensorflow} deep neural network model that estimates the \ptvecmiss in an event. The vector $\ptvecmiss$ is associated with either the production of neutrinos or potential BSM particles that could propagate through the detector interacting only weakly. The inputs to DM are 11 features from each particle-flow candidate~\cite{CMS:2017yfk} in an event, with zero-padding up to 4\,500 candidates for a given event. This zero-padding is necessary for both the standard version of DM and for its SONIC-enabled implementation; similarly, in both cases, only one inference is made per event. DM outputs two values for each event: the \ptvecmiss components in the $x$ and $y$ directions. Because every event necessarily has the same number of inputs, dynamic batching is automatically available via SONIC, aiding inference efficiency in cases where many client jobs make concurrent requests within a certain time window (as shown in Fig.~\ref{fig:algorithms}, each client thread will make a request about once per second). A single 4-threaded job processing a Run 2 \ttbar event will generate about 1.3\unit{MB/s} of server input for DM.
 
 \subsubsection{DeepTauID}
-
 DeepTaudID (DT)~\cite{CMS:2022prd} is a \TENSORFLOW-based deep neural network model to identity hadronic decayed tau leptons from the jet collections. The inputs to the network include low-level particle features of electrons/photons, muons, and neutral hadrons, and high-level event features. The output is a three-dimensional tensor, representing the probability that the candidate is produced in different types of decay modes. In the implementation of direct inference in CMSSW, the network is split into three sub-models. The first two networks process the lower-level input information separately, and the third network combines the information from the first two models with the high-level information and outputs the discriminator values. In the SONIC implementation, we use a combined model with zero-padded inputs, so that dynamic batching can be used and GPUs can be utilized more efficiently. A single 4-threaded job processing a Run 2 \ttbar event will generate about 4.7\unit{MB/s} of server input for DT, making it the most demanding algorithm explored in this study in terms of server input.
     
     %\item ECAL DRN maybe?  Maybe put that as a separate bullet or just put that in a separate section entirely
@@ -68,9 +67,22 @@ The latency breakdown for the three algorithms highlighted above in a sample of 
 \end{center}
 \end{table}
 
+\subsection{Computing resources}
+
+Fermilab, via the LHC Physics Center (LPC), provides CPU-only batch resources and a set of interactive machines with NVIDIA Tesla T4 GPUs. Through Fermilab, we were also able to steer the allocation of cloud resources (see below) using the HepCloud~\cite{Holzman:2017jgg} framework. These resources are physically located in Illinois.
+%need to be more specific?
+
+The Google Cloud Platform (GCP) provides CPU-only virtual machines (VMs) and VMs enabled with NVIDIA Tesla T4 GPUs. By default, the CPUs are a mix of Skylake, Broadwell, Haswell, Sandy Bridge, and Ivy Bridge architectures. In GCP, we created customized machines with specified numbers of CPU threads or different ratios of CPU threads to number of GPUs. Similarly, a customized, dynamic SLURM~\cite{slurm} cluster was created that could instantiate and deplete 4-thread VMs on demand for medium-scale tests that ran jobs across $\mathcal{O}(1000)$ CPUs. The cluster's 4-thread configuration was chosen so that 4-threaded CMSSW jobs would saturate the node's resources, improving reproducibility of timing tests. CPU-only VMs could also be instantiated through HepCloud. In GCP, we also maintained GPU-enabled VMs running Triton servers that both the SLURM and HepCloud client nodes could access. These resources are physically located in Iowa.
+
+At the Purdue CMS Tier-2 computing cluster, tests were performed with reserved CPU-only and GPU-enabled machines. The CPU-only machines are 20-core Intel E5-2660 v3 machines, and the GPU-enabled machines each have two AMD EPYC-7702 CPUs with a NVIDIA Tesla T4 GPU. Reserving these nodes allowed for controlled resource utilization, leading to more reproducible timing tests. These resources are physically located in Indiana.
+
+It is important to note that having a diversity of locations for these resources allows for a clear demonstration of one of SONIC's key features, namely that it enables the use of non-local resources. We were able to start a server in one location and have client jobs running at another site. One such study will be presented in Section~\ref{sec:different_sites}.
+
 
 \subsection{Ragged batching}
 \label{sec:ragged}
+
+\textcolor{red}{Placement and contents of this section need to be further discussed.}
 
 In the SONIC paradigm, it is generally easiest to make one inference request per event for each model hosted as-a-service. For some models, such as PN, this entails making inference requests with batch size greater than 1, involving multiple objects with potentially different numbers of inputs. This introduces a subtlety with respect to padding. Older versions of Triton did not allow for ``ragged batching'', in which inference requests for models with a variable number of inputs can be combined into a single batch even if each request has a different number of inputs. Because of this, two approaches can be taken.
 

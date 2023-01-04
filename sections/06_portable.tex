@@ -2,8 +2,6 @@ While the inference servers discussed so far have exclusively utilized GPU resou
 
 \subsection{CPU fallback server}
 \label{sec:fallback}
-\textcolor{red}{(The contents in this section might be updated after the CPU saturation study discussion.)}
-
 %As discussed in Section~\ref{sec:sonic_benefits}, SONIC can factorize the ML software frameworks out of the client. Therefore, SONIC can be used as the default approach for inference even on local CPUs, eliminating the need to integrate third-party direct ML inference framework support into the experiment software (CMSSW). In addition, w
 When running with remote servers, one potentially common and important failure mode is communication errors between clients and servers. In order to support automatic local CPU inference as a backup option when communication failures occur with remote servers, the SONIC implementation includes a service that can launch a Triton server using local CPU resources for any SONIC-compatible models, referred to as a ``fallback server''. Fallback servers can also be used for inferences when third-party ML frameworks are not supported yet for direct inferences. 
 
