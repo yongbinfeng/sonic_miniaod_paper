@@ -7,10 +7,11 @@
 \newcommand{\ONNX} {{\textsc{ONNX}}\xspace}
 \newcommand{\ONNXRUNTIME} {{\textsc{ONNX Runtime}}\xspace}
 \newcommand{\XGBOOST} {{\textsc{XGBoost}}\xspace}
+\newcommand{\Google} {{\textsc{Google}}\xspace}
 %\usepackage{enumitem}
 
 
-\cmsNoteHeader{ML-23-YYY}
+\cmsNoteHeader{MLG-23-YYY}
 
 \title{Portable Acceleration of CMS Mini-AOD Production with Coprocessors as a Service}
 
@@ -19,14 +20,14 @@
 
 \date{\today}
 
-\abstract{Computing demands for large scientific experiments, such as the CMS experiment at CERN, will increase dramatically in the next decades. To complement the future performance increases of software running on CPUs, explorations of coprocessor usage in data processing hold great potential and interest. We explore the novel approach of Services for Optimized Network Inference on Coprocessors (SONIC), and study the deployment of this as-a-service approach in large-scale data processing. In this setup, the main CMS Mini-AOD data processing workflow is executed on CPUs, while several machine learning (ML) inference tasks are offloaded onto (remote) coprocessors, such as GPUs. With experiments performed at Google Cloud, the Purdue Tier-2 computing center, and combinations of the two, we demonstrate the acceleration of these ML algorithms individually on coprocessors and the corresponding throughput improvement for the entire workflow. We also present that this approach can be easily generalized to different types of coprocessors, and even deployed on local CPUs without performance decrease. We emphasize that SONIC enables high coprocessor usage and brings the portability to run workflows on different types of coprocessors.
+\abstract{Computing demands for large scientific experiments, such as the CMS experiment at CERN, will increase dramatically in the next decades. To complement the future performance increases of software running on CPUs, explorations of coprocessor usage in data processing hold great potential and interest. We explore the novel approach of Services for Optimized Network Inference on Coprocessors (SONIC), and study the deployment of this as-a-service approach in large-scale data processing. In the studies, we take the CMS Mini-AOD data processing workflow as an example, and run the main workflow on CPUs, while offloading several machine learning (ML) inference tasks onto (remote) coprocessors, such as GPUs. With experiments performed at Google Cloud, the Purdue Tier-2 computing center, and combinations of the two, we demonstrate the acceleration of these ML algorithms individually on coprocessors and the corresponding throughput improvement for the entire workflow. We also present that this approach can be easily generalized to different types of coprocessors, and also deployed on local CPUs without performance decrease. We emphasize that SONIC enables high coprocessor usage and brings the portability to run workflows on different types of coprocessors.
 }
 
 \hypersetup{%
-pdfauthor={SONIC Team},%
+pdfauthor={SONIC},%
 pdftitle={Portable Acceleration of CMS Mini-AOD Production with Coprocessors as a Service},%
 pdfsubject={CMS},%
-pdfkeywords={CMS, Computing, Machine Learning}}
+pdfkeywords={CMS, Offline and Computing, Machine Learning}}
 
 \maketitle
 
@@ -43,7 +44,7 @@ pdfkeywords={CMS, Computing, Machine Learning}}
 \input{sections/03_sonic}
 
 
-\section{Physics Datasets and Algorithms}
+\section{Physics Datasets, Algorithms, and Benchmark Setup}
 \label{sec:algo}
 \input{sections/04_dataAndalgo}
 

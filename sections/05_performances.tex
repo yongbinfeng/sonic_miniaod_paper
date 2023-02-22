@@ -1,14 +1,14 @@
-%Document the test results we did at ailab, Purdue, and Google Cloud.
+In this section we discuss the performance of running Mini-AOD productions with SONIC. The comparisons are done with respect to ``direct" inference, which refers to the current standard approach where the ML inference backends are integrated into \CMSSW and everything runs inside \CMSSW on CPUs. 
 
-\subsection{Latency Optimization}
+As mentioned in Sec.~\ref{sec:triton}, since there are some degrees of freedom when deploying the models on the server, first we start with the per-algorithm optimizations in order to find the optimal algorithm configuration for productions. Then we check the impacts of deploying servers on different sites. Finally we mimic the real productions by running the scale-up tests and check the performances.
+
+\subsection{Per-algorithm Inference Optimization}
 \label{sec:algo_acceleration}
-%Document the comparisons of CPU and GPU throughuts and latency of these different algorithms, maybe also with different backends, e.g., Tensorflow, ONNX, TensorRT, Pytorch, etc.
-
 %We measure the throughputs and latency of the ParticleNet algorithm on one NVIDIA Tesla T4 GPU, with different inference backends supported in Triton: ONNX, Pytorch, and also Pytorch with TensorRT optimizations. The results are shown in Fig.~\ref{fig:throughputs_pn}.
 
-To maximize the resource efficiency and throughput benefits of SONIC, it is necessary to start with some single-model characterization studies out of \CMSSW. For example, in order to maximize GPU usage without oversaturation, we need to find the optimal ratio of client-side CPUs to GPU, find the best batch size for inference in the Triton server, and choose the model implementation that will give the best throughput.
+To maximize the resource efficiency and throughput benefits of SONIC, it is necessary to start with some single-model characterization studies out of \CMSSW. For example, in order to maximize GPU usage without oversaturation, we need to find the optimal ratio of client-side CPUs to server-side GPUs, find the best batch size for inference in the Triton server, and choose the model configuration that will give the best throughput.
 
-The latter two aspects mentioned above can be explored with the Triton Model Analyzer tool~\cite{triton_model_analyzer}. This tool feeds certain inputs in the correct tensor format to a loaded model hosted on a server, allowing for robust characterization of latency per inference or exploration of the impact of batch size.
+The latter two optimizations can be performed with the Triton Model Analyzer tool~\cite{triton_model_analyzer}. This tool feeds certain inputs in the correct tensor format to a loaded model hosted on a server, allowing for robust characterization of latency per inference or exploration of the impact of batch size.
 As an example, we measure the latency and throughput of the ParticleNet (PN) algorithm for AK4 jet tagging on one NVIDIA Tesla T4 GPU, with different inference backends supported in Triton: \ONNX, \ONNX with TRT, and \PYTORCH~\cite{pytorch}. %Was this done at Purdue?
 The results are shown in Fig.~\ref{fig:throughputs_pn}. 
 
@@ -24,27 +24,43 @@ For smaller batch sizes, the TRT version of PN algorithm leads to the highest th
 %IN THE FIGURE, IS THAT REALLY EVENTS PER SECOND?  OR IS THAT INFERENCES PER SECOND
 %What is our batching window?
 
-The model analyzer can also approximately determine how many inferences per second a single GPU can perform before saturation. For example, for the \PYTORCH version of PN for AK4 jets, a single Tesla T4 GPU can perform about 6\,000 inferences per second without saturating. This corresponds to about 400 \textit{events} per second, given the typical number of jets per event.
-Based on this, we can estimate how many CPU clients one GPU can support in parallel. A typical production configuration runs 4-threaded MiniAOD jobs, each of which processes about 3.6 events per second. Therefore, a single GPU should be able to handle about 110 4-threaded jobs in parallel running asynchronously, assuming it is being used exclusively for a single server hosting the PyTorch AK4 PN model.
+Similar studies can be performed on other models as well. Fig.~\ref{fig:throughputs_deepmet} and~\ref{fig:throughputs_deeptau} show the latency and throughput scans of DeepMET and DeepTau models. 
 
-This expected saturation point can be tested directly by scanning the throughput as a function of the number of CPU clients pinging one GPU server. Figure~\ref{fig:throughputs_scan_pn} shows such a test for AK4 PN, which was performed in GCP using a custom SLURM cluster. A single server running on one NVIDIA T4 GPU was started on one cloud VM, and client-side jobs were executed in VMs that had 4 CPU threads.
-When offloading PN inference to GPU, we expect an improvement in the overall throughput of about 5\%, corresponding to the fraction of time taken by the total AK4 PN processing. Such an improvement is observed before saturation, where the throughput is stable as a function of the number of simultaneous CPU clients. The throughput decreases as the GPU starts to saturate, as individual client-side jobs have to wait longer for inference requests to complete and return. The throughput becomes slower than CPU-only inference at a bit after 160 parallel jobs.  This is a bit higher than the prediction from the model analyzer, likely due to the fact that the majority of the real input is padded 0s, while the model analyzer uses randomized input.
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.98\textwidth]{plots/latencies_throughputs_deepmet.pdf}
+    \caption{Latency (left) and throughput (right) of the DeepMET algorithm serviced by a Triton server running on one NVIDIA Tesla T4 GPU, presented as a function of the batch size. Values are shown for different inference backends: \TENSORFLOW (orange), and \TENSORFLOW with TRT (green). Performance for these backends when run on a CPU-based Triton server are given in dashed lines, with the same color-to-backend correspondence.}%
+    \label{fig:throughputs_deepmet}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.98\textwidth]{plots/latencies_throughputs_deeptau.pdf}
+    \caption{Latency (left) and throughput (right) of the DeepTau algorithm serviced by a Triton server running on one NVIDIA Tesla T4 GPU, presented as a function of the batch size. Values are shown for different inference backends: \TENSORFLOW (orange), and \TENSORFLOW with TRT (green). Performance for these backends when run on a CPU-based Triton server are given in dashed lines, with the same color-to-backend correspondence.}%
+    \label{fig:throughputs_deeptau}
+\end{figure}
+
+The model analyzer can also approximately determine how many inferences per second a single GPU can perform before saturation. For example, for the \PYTORCH version of PN for AK4 jets, a single Tesla T4 GPU can perform about 6\,000 inferences per second without saturating. This corresponds to about 400 \textit{events} per second, given the typical number of jets per event.
+Based on this, we can estimate how many CPU clients one GPU can support in parallel. A typical production configuration runs 4-threaded Mini-AOD jobs, each of which processes about 3.6 events per second. Therefore, a single GPU should be able to handle about 110 4-threaded jobs in parallel running asynchronously, assuming it is being used exclusively for a single server hosting the PyTorch AK4 PN model.
+
+This expected saturation point can be tested directly by scanning the throughput as a function of the number of CPU clients pinging one GPU server. Figure~\ref{fig:throughputs_scan_pn} shows such tests for AK4 PN, the AK8 PN models, DeepMET, and DeepTau, which were performed in GCP using a custom SLURM cluster. For each model, a single server running on one NVIDIA T4 GPU was started on one cloud VM, and client-side jobs were executed in VMs that had 4 CPU threads. The tests for each model class were performed separately, and as one model class was being tested, the non-SONIC versions of the other models were used.
+When offloading PN inference to GPU, we expect an improvement in the overall throughput of about 5\% compared with direct inferences, corresponding to the fraction of time taken by the total AK4 PN processing. Such an improvement is observed before saturation, where the throughput is stable as a function of the number of simultaneous CPU clients. The throughput decreases as the GPU starts to saturate, as individual client-side jobs have to wait longer for inference requests to complete and return. The throughput becomes slower than CPU-only inference at a bit after 160 parallel jobs. This is a bit higher than the prediction from the model analyzer, likely due to the fact that the majority of the real input is padded 0s, while the model analyzer uses randomized input.
 \begin{figure}[ht]
     \centering
     %\includegraphics[width=0.90\textwidth]{plots/throughput_njobs_scan_pn.png}
     \includegraphics[width=0.70\textwidth]{plots/PN_throughput_scan_PT.pdf}
-    \caption{GPU saturation scan performed in GCP, where per-event throughput is shown shown as a function of the number of parallel CPU clients for the \PYTORCH version of ParticleNet for AK4 jets. Each of the parallel jobs was run in a 4-threaded configuration.}
+    \caption{GPU saturation scan performed in GCP, where per-event throughput is shown shown as a function of the number of parallel CPU clients for the \PYTORCH version of ParticleNet for AK4 jets (black), DeepMET (blue), DeepTau optimized with TRT (red), and all \PYTORCH versions of ParticleNet for AK8 jets on a single GPU (green). Each of the parallel jobs was run in a 4-threaded configuration.}
     \label{fig:throughputs_scan_pn}
 \end{figure}
 
-Similar analysis was performed for the other models. When all three flavors of PN for AK8 jets are hosted on a single GPU, that GPU can service about 195 simultaneous 4-threaded client jobs. For DT and DM, a single GPU hosting only one of the algorithms could service about 64 and 520 client jobs, respectively. From these saturation values, it is possible to determine the number of GPUs that would be needed to service a production job that uses a large number of client side CPUs, and it is possible to determine the ratio of the number of GPUs hosting different models. For PN and DT, the saturation points will depend on the number of jets and taus in the events in the sample being processed, such that the ratio of GPUs hosting different models and the required ratio of GPUs to CPUs is sample-dependent. As long as dynamic batching is enabled, the number of GPUs required for a model will depend roughly linearly with the number of objects per event that require an inference; for example, if a sample had half as many jets per event, it would require roughly half as many GPUs to service PN, while the number of GPUs required for DM should not change, as that model makes one inference for all events.
+Similar analysis was performed for the other models. When all three flavors of PN for AK8 jets are hosted on a single GPU, that GPU can service about 195 simultaneous 4-threaded client jobs. For DT and DM, a single GPU hosting only one of the algorithms could service about 64 and 520 client jobs, respectively. The differences between these saturation points are mostly due to different model sizes and different number of objects per event. From these saturation values, it is possible to determine the number of GPUs that would be needed to service a production job that uses a large number of client side CPUs, and it is possible to determine the ratio of the number of GPUs hosting different models. For PN and DT, the saturation points will depend on the number of jets and taus in the events in the sample being processed, such that the ratio of GPUs hosting different models and the required ratio of GPUs to CPUs is sample-dependent. As long as dynamic batching is enabled, the number of GPUs required for a model will depend roughly linearly with the number of objects per event that require an inference; for example, if a sample had half as many jets per event, it would require roughly half as many GPUs to service PN, while the number of GPUs required for DM should not change, as that model makes one inference for all events.
 
-It should also be noted that a single GPU can host multiple models. In practice, it was found that putting only a single model on each GPU lead to about 3--5\% faster performance than putting every model on each GPU, and this split-model configuration was used in subsequent studies. However, in a scenario where samples with diverse physics content are being processing, using the every-model configuration could prove to be the easiest option, though preparatory model profiling \textit{should} still be performed to ensure that enough GPUs and model instances will be available.
+It should also be noted that a single GPU can host multiple models. In practice, it was found that putting only a single model on each GPU led to about 3--5\% faster performance than putting every model on each GPU, and this split-model configuration was used in subsequent studies. However, in a scenario where samples with diverse physics content are being processing, using the every-model configuration could prove to be the most straightfoward option, though preparatory model profiling should still be performed to ensure that enough GPUs and model instances will be available.
 
 \subsection{Cross-site tests}
 \label{sec:different_sites}
 
-At this point, it is worth addressing a potential bottleneck in the SONIC paradigm: increased inference latency due to physical distance between client and server and the network loads. While a previous study observed that the per-event latency difference between remote and on-premises servers is negligible~\cite{Krupa:2020bwg}, we tested this observation explicitly with the Mini-AOD workflow, with results presented in Fig.~\ref{fig:crosssites}. In this test, client-side jobs were executed at Purdue's Tier-2 computing cluster in Indiana. The blue points and lines show the throughput improvement in the Mini-AOD workflow when the client jobs communicate with Triton servers hosting all models at the same time, running on a single GPU \textit{also physically located at Purdue}. The improvement is shown as a function of the number of synchronized 4-threaded client-side jobs running at once. It can be seen that the single GPU server begins to saturate when about 10 client side jobs are sending requests at once and that the SONIC-enabled Mini-AOD workflow becomes \textit{slower} than the CPU-only workflow if more than about 17 4-threaded client-side jobs are running at once.
+At this point, it is worth addressing a potential bottleneck in the SONIC paradigm: increased inference latency due to physical distance between client and server and the network loads. While a previous study observed that the per-event latency difference between remote and on-premises servers is negligible~\cite{Krupa:2020bwg}, we tested this observation explicitly with the Mini-AOD workflow, with results presented in Fig.~\ref{fig:crosssites}. In this test, client-side jobs were executed at Purdue's Tier-2 computing cluster in Indiana. All the models are loaded into one server running on one single GPU for simplicity. The blue points and lines show the throughput improvement in the Mini-AOD workflow when the client jobs communicate with Triton servers hosting all models at the same time, running on a single GPU \textit{also physically located at Purdue}. The improvement is shown as a function of the number of synchronized 4-threaded client-side jobs running at once. It can be seen that the single GPU server begins to saturate when about 10 client side jobs are sending requests at once and that the SONIC-enabled Mini-AOD workflow becomes \textit{slower} than the CPU-only workflow if more than about 17 4-threaded client-side jobs are running at once.
 
 The green points and line in Fig.~\ref{fig:crosssites} show the throughput improvement when the client side jobs are once again run at Purdue, while the Triton server hosting all models on a single GPU is run on GCP resources, which were \textit{physically located in Iowa} for this test. Both the observed throughput increase and observed GPU saturation point are about the same for both server locations, so we can safely conclude that server location has little impact on performance, at least for client-server separations on the order of hundreds of kilometers.
 
@@ -52,8 +68,8 @@ The green points and line in Fig.~\ref{fig:crosssites} show the throughput impro
 
 \begin{figure}[htp]
     \centering
-    \includegraphics[width=0.60\textwidth]{plots/cloud_vs_purdue.png}
-    \caption{Production tests across different sites. The CPU tasks run at Purdue, while the servers with GPU inference tasks run at Purdue (Blue) and Cloud (Green). \textcolor{red}{(Plot to be updated with better quality for publication (and better legend?).)}}
+    \includegraphics[width=0.60\textwidth]{plots/throughput_crosssite.pdf}
+    \caption{Production tests across different sites. The CPU tasks run at Purdue, while the servers with GPU inference tasks run at Purdue (Blue) and Cloud (Red).}
     \label{fig:crosssites}
 \end{figure}
 
@@ -70,7 +86,7 @@ Preemptible resources were used to reduce the costs of running single tests. Sim
 
 The results of this large-scale test are shown in Fig.~\ref{fig:scaleout}. The SONIC-enabled jobs achieved an average throughput of 4.01 events per second, while CPU-only benchmarking jobs had a throughput of 3.55 events per second. This 12\% speed-up in throughput is about what would be expected from removing the PN, DT, and DM inference from the total MiniAOD latency.
 
-As mentioned before, server-side VMs were optimized to allow maximal input and output bandwidth. No bottlenecks due to bandwidth were observed in this scale-out test. We noted that the maximum rate of bytes received by one of the Kubernetes load-balancers was 11.5\unit{GB/s}, which was for DT. The next-highest data input rate was 3.3\unit{GB/s} for DM, and less than 500\unit{MB/s} of input was needed for all PN models combined. The output rate was significantly smaller for each model, as most return only one or a few floating-point values as the inference result.
+\begin{sloppypar}As mentioned before, server-side VMs were optimized to allow maximal input and output bandwidth. No bottlenecks due to bandwidth were observed in this scale-out test. We noted that the maximum rate of bytes received by one of the Kubernetes load-balancers was 11.5\unit{GB/s}, which was for DT. The next-highest data input rate was 3.3\unit{GB/s} for DM, and less than 500\unit{MB/s} of input was needed for all PN models combined. The output rate was significantly smaller for each model, as most return only one or a few floating-point values as the inference result.\end{sloppypar}
 
 %discuss server-side CPU requirements?
 
@@ -79,7 +95,7 @@ As mentioned before, server-side VMs were optimized to allow maximal input and o
 \begin{figure}[htp]
     \centering
     \includegraphics[width=0.70\textwidth]{plots/scale_out_test_reformat.pdf}
-    \caption{Scale-out test results at Google Cloud. The average throughput of the SONIC-less workflow is 3.55\unit{ev/s}, while the average throughput of the SONIC-enabled workflow was 4.01\unit{ev/s}. The SONIC-enabled workflow thus achieves a throughput that is 12\% faster than the CPU-only version of the workflow.}
+    \caption{Scale-out test results at Google Cloud. The average throughput of the SONIC-enabled workflow was 4.01\unit{evt/s}, while the average throughput of the ``direct-inference" workflow is 3.55\unit{evt/s} (dashed red) with a variance of around 2\%. The SONIC-enabled workflow thus achieves a throughput that is 12\% faster than the CPU-only version of the workflow.}
     \label{fig:scaleout}
 \end{figure}
 
